@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "id": "pixbroker.grokbar-omarchy",
+  "name": "Claude & Grok",
+  "version": "1.5.0",
+  "author": "pixbroker",
+  "license": "MIT",
+  "description": "Claude Code and SuperGrok usage on the bar, plus optional Cursor and Grok Bot.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "activation": "on-demand",
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Claude & Grok",
+    "description": "Bar widget for Claude Code and SuperGrok usage, plus optional Cursor and Grok Bot.",
+    "category": "AI",
+    "aliases": [
+      "claude-grok",
+      "usebar",
+      "grokbar-omarchy"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 300,
+      "showCursorUsage": false,
+      "showGrokBotUsage": false,
+      "showClaudeUsage": true,
+      "authPath": "",
+      "stateDbPath": "",
+      "cursorAuthPath": "",
+      "claudeConfigDir": ""
+    },
+    "schema": [
+      {
+        "key": "showCursorUsage",
+        "type": "boolean",
+        "label": "Show Cursor usage",
+        "description": "Show Cursor monthly pools on the bar. Off by default; also toggled from panel settings.",
+        "defaultValue": false
+      },
+      {
+        "key": "showGrokBotUsage",
+        "type": "boolean",
+        "label": "Show Grok Bot usage",
+        "description": "Show Grok Bot weekly pool on the bar. Off by default; also toggled from panel settings.",
+        "defaultValue": false
+      },
+      {
+        "key": "showClaudeUsage",
+        "type": "boolean",
+        "label": "Show Claude usage",
+        "description": "Show Claude Code session and weekly pools on the bar. On by default; also toggled from panel settings.",
+        "defaultValue": true
+      },
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 30,
+        "max": 3600,
+        "step": 30,
+        "defaultValue": 300
+      },
+      {
+        "key": "authPath",
+        "type": "path",
+        "label": "Grok auth.json",
+        "defaultValue": "",
+        "description": "Optional. Defaults to ~/.grok/auth.json."
+      },
+      {
+        "key": "stateDbPath",
+        "type": "path",
+        "label": "Cursor state.vscdb",
+        "defaultValue": "",
+        "description": "Optional. Defaults to ~/.config/Cursor/User/globalStorage/state.vscdb."
+      },
+      {
+        "key": "cursorAuthPath",
+        "type": "path",
+        "label": "Cursor CLI auth.json",
+        "defaultValue": "",
+        "description": "Optional. Defaults to ~/.config/cursor/auth.json."
+      },
+      {
+        "key": "claudeConfigDir",
+        "type": "path",
+        "label": "Claude config directory",
+        "defaultValue": "",
+        "description": "Optional. Defaults to ~/.claude."
+      }
+    ]
+  }
+}
