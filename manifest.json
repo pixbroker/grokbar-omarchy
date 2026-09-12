@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "pixbroker.grokbar-omarchy",
-  "name": "Claude & Grok",
-  "version": "1.5.0",
+  "name": "Grok",
+  "version": "1.7.0",
   "author": "pixbroker",
   "license": "MIT",
-  "description": "Claude Code and SuperGrok usage on the bar, plus optional Cursor and Grok Bot.",
+  "description": "SuperGrok usage on the bar, plus optional Cursor, Grok Bot, and GPT.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,11 +14,10 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Claude & Grok",
-    "description": "Bar widget for Claude Code and SuperGrok usage, plus optional Cursor and Grok Bot.",
+    "displayName": "Grok",
+    "description": "Bar widget for SuperGrok usage, plus optional Cursor, Grok Bot, and GPT.",
     "category": "AI",
     "aliases": [
-      "claude-grok",
       "usebar",
       "grokbar-omarchy"
     ],
@@ -28,11 +27,11 @@
       "refreshIntervalSec": 300,
       "showCursorUsage": false,
       "showGrokBotUsage": false,
-      "showClaudeUsage": true,
+      "showGptUsage": false,
       "authPath": "",
       "stateDbPath": "",
       "cursorAuthPath": "",
-      "claudeConfigDir": ""
+      "codexHome": ""
     },
     "schema": [
       {
@@ -50,11 +49,11 @@
         "defaultValue": false
       },
       {
-        "key": "showClaudeUsage",
+        "key": "showGptUsage",
         "type": "boolean",
-        "label": "Show Claude usage",
-        "description": "Show Claude Code session and weekly pools on the bar. On by default; also toggled from panel settings.",
-        "defaultValue": true
+        "label": "Show GPT usage",
+        "description": "Show GPT usage from the local Codex session. Off by default; also toggled from panel settings.",
+        "defaultValue": false
       },
       {
         "key": "refreshIntervalSec",
@@ -87,11 +86,11 @@
         "description": "Optional. Defaults to ~/.config/cursor/auth.json."
       },
       {
-        "key": "claudeConfigDir",
+        "key": "codexHome",
         "type": "path",
-        "label": "Claude config directory",
+        "label": "Codex home directory",
         "defaultValue": "",
-        "description": "Optional. Defaults to ~/.claude."
+        "description": "Optional. Defaults to ~/.codex."
       }
     ]
   }

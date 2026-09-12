@@ -777,8 +777,11 @@ def subscription_rebill(payload):
     return "", False
   stripe = sub.get("stripe") if isinstance(sub.get("stripe"), dict) else {}
   end = str(sub.get("billingPeriodEnd") or stripe.get("currentPeriodEnd") or "").strip()
+  when = parse_iso(end)
+  if when is None or when <= datetime.now(timezone.utc):
+    return "", False
   cancels = bool(sub.get("cancelAtPeriodEnd") or stripe.get("cancelAtPeriodEnd"))
-  return end, cancels
+  return to_iso(when) if when else end, cancels
 
 
 def build_result(weekly, tier_label="", account_name="", account_email="", period_end="", cancels=False):

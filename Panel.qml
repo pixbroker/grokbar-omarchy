@@ -4,12 +4,12 @@ import qs.Ui
 
 // Usage popup. BarWidget.qml owns the bar slot and scan state.
 // Grok card mirrors grok.com Settings → Usage (weekly pool + products).
-// Claude is on when a Claude Code login exists. Cursor and Grok Bot cards
-// are optional (settings toggles, off by default). Cursor shows two monthly
-// pools; Grok Bot shows its weekly pool; Claude shows session, weekly, and
-// any model-scoped windows. Cursor and Grok Bot require the Cursor account
-// to match Grok.
-// Gear and reload follow the HEY panel: header buttons, flip to settings.
+// Cursor, Grok Bot, and GPT cards are optional (settings toggles, off by
+// default). Cursor shows two monthly pools; Grok Bot shows its weekly pool;
+// GPT shows session, weekly, and any extra windows. Cursor and Grok Bot
+// require the Cursor account to match Grok. GPT reads the local Codex /
+// ChatGPT login. Gear and reload follow the HEY panel: header buttons,
+// flip to settings.
 Panel {
   id: root
   moduleName: "pixbroker.grokbar-omarchy"
@@ -17,6 +17,12 @@ Panel {
   manageIpc: false
 
   property var anchorItem: null
+  property bool openedFromHotkey: false
+  // The bar tracks the widget mounted in its slot — BarWidget.qml — not this
+  // nested panel. Everything the bar identifies a panel by has to be that
+  // widget: the popout coordinator (and with it the open-panel dot under the
+  // pill) compares against `slot.activeItem`, and switchPanelFrom looks the
+  // slot up the same way. Third-party widgets get PluginBarApi as `bar`.
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
 
@@ -37,12 +43,12 @@ Panel {
   readonly property string resetAt: hostWidget ? String(hostWidget.resetAt || "") : ""
   readonly property string periodStart: hostWidget ? String(hostWidget.periodStart || "") : ""
   readonly property string tierLabel: hostWidget ? String(hostWidget.tierLabel || "") : ""
-  property string grokLoginName: ""
-  property string grokLoginEmail: ""
+  readonly property string grokLoginName: hostWidget ? String(hostWidget.grokLoginName || "") : ""
+  readonly property string grokLoginEmail: hostWidget ? String(hostWidget.grokLoginEmail || "") : ""
   property bool grokIdentityOpen: false
   property bool grokBotIdentityOpen: false
   property bool cursorIdentityOpen: false
-  property bool claudeIdentityOpen: false
+  property bool gptIdentityOpen: false
   property bool settingsOpen: false
   property bool pendingSettingsOpen: false
   property bool refreshing: false
@@ -61,16 +67,16 @@ Panel {
   readonly property bool showGrokBotUsage: hostWidget
     ? hostWidget.showGrokBotUsage === true
     : !!(settings && settings.showGrokBotUsage === true)
-  readonly property bool showClaudeUsage: hostWidget
-    ? hostWidget.showClaudeUsage !== false
-    : root.setting("showClaudeUsage", true) !== false
+  readonly property bool showGptUsage: hostWidget
+    ? hostWidget.showGptUsage === true
+    : !!(settings && settings.showGptUsage === true)
   readonly property real cursorAutoPercent: hostWidget ? Number(hostWidget.cursorAutoPercent) : -1
   readonly property real cursorApiPercent: hostWidget ? Number(hostWidget.cursorApiPercent) : -1
   readonly property string cursorResetAt: hostWidget ? String(hostWidget.cursorResetAt || "") : ""
   readonly property string cursorPeriodStart: hostWidget ? String(hostWidget.cursorPeriodStart || "") : ""
   readonly property string cursorTierLabel: hostWidget ? String(hostWidget.cursorTierLabel || "") : ""
-  property string cursorLoginName: ""
-  property string cursorLoginEmail: ""
+  readonly property string cursorLoginName: hostWidget ? String(hostWidget.cursorLoginName || "") : ""
+  readonly property string cursorLoginEmail: hostWidget ? String(hostWidget.cursorLoginEmail || "") : ""
   readonly property string cursorUsageStatusText: hostWidget ? String(hostWidget.cursorUsageStatusText || "") : ""
   readonly property string cursorAuthHelpText: hostWidget ? String(hostWidget.cursorAuthHelpText || "") : ""
   readonly property bool cursorHasData: cursorAutoPercent >= 0 || cursorApiPercent >= 0
@@ -81,14 +87,16 @@ Panel {
   readonly property string grokBotUsageStatusText: hostWidget ? String(hostWidget.grokBotUsageStatusText || "") : ""
   readonly property string grokBotAuthHelpText: hostWidget ? String(hostWidget.grokBotAuthHelpText || "") : ""
   readonly property bool grokBotHasData: grokBotPercent >= 0
-  readonly property real claudeSessionPercent: hostWidget ? Number(hostWidget.claudeSessionPercent) : -1
-  readonly property real claudeWeeklyPercent: hostWidget ? Number(hostWidget.claudeWeeklyPercent) : -1
-  readonly property string claudeSessionResetAt: hostWidget ? String(hostWidget.claudeSessionResetAt || "") : ""
-  readonly property string claudeWeeklyResetAt: hostWidget ? String(hostWidget.claudeWeeklyResetAt || "") : ""
-  readonly property string claudeTierLabel: hostWidget ? String(hostWidget.claudeTierLabel || "") : ""
-  readonly property string claudeUsageStatusText: hostWidget ? String(hostWidget.claudeUsageStatusText || "") : ""
-  readonly property string claudeAuthHelpText: hostWidget ? String(hostWidget.claudeAuthHelpText || "") : ""
-  readonly property bool claudeHasData: hostWidget ? hostWidget.claudeHasData === true : false
+  readonly property real gptSessionPercent: hostWidget ? Number(hostWidget.gptSessionPercent) : -1
+  readonly property real gptWeeklyPercent: hostWidget ? Number(hostWidget.gptWeeklyPercent) : -1
+  readonly property string gptSessionResetAt: hostWidget ? String(hostWidget.gptSessionResetAt || "") : ""
+  readonly property string gptWeeklyResetAt: hostWidget ? String(hostWidget.gptWeeklyResetAt || "") : ""
+  readonly property string gptTierLabel: hostWidget ? String(hostWidget.gptTierLabel || "") : ""
+  readonly property string gptLoginName: hostWidget ? String(hostWidget.gptLoginName || "") : ""
+  readonly property string gptLoginEmail: hostWidget ? String(hostWidget.gptLoginEmail || "") : ""
+  readonly property string gptUsageStatusText: hostWidget ? String(hostWidget.gptUsageStatusText || "") : ""
+  readonly property string gptAuthHelpText: hostWidget ? String(hostWidget.gptAuthHelpText || "") : ""
+  readonly property bool gptHasData: hostWidget ? hostWidget.gptHasData === true : false
 
   // TEMP QA hook: force over-pace styling (leave false in production).
   readonly property bool simulateOverPace: false
@@ -151,15 +159,10 @@ Panel {
   }
 
   readonly property string grokRebillLabel: root.formatRebillLabel(subscriptionPeriodEnd, subscriptionCancelsAtEnd)
-  readonly property string heroMeta: {
-    if (usageStatusText !== "") return usageStatusText
-    if (grokRebillLabel !== "") return grokRebillLabel
-    return "\u00A0"
-  }
-  readonly property real grokMetaOpacity: {
-    if (usageStatusText !== "") return 1
-    return root.grokIdentityOpen && grokRebillLabel !== "" ? 1 : 0
-  }
+  readonly property string heroMeta: root.clickMeta(
+    usageStatusText, resetAt, subscriptionPeriodEnd, subscriptionCancelsAtEnd)
+  readonly property real grokMetaOpacity: root.clickMetaOpacity(
+    usageStatusText, heroMeta, grokIdentityOpen)
 
   readonly property bool panelRefreshing: {
     if (root.refreshing) return true
@@ -168,7 +171,7 @@ Panel {
     if ((root.showCursorUsage || root.showGrokBotUsage)
         && hostWidget.cursorRefreshing === true)
       return true
-    return root.showClaudeUsage && hostWidget.claudeRefreshing === true
+    return root.showGptUsage && hostWidget.gptRefreshing === true
   }
 
   // "23% of weekly limit used"
@@ -223,15 +226,9 @@ Panel {
 
   readonly property string cursorTitle: cursorTierLabel !== "" ? cursorTierLabel : "Cursor"
   readonly property string cursorRebillLabel: root.formatRebillLabel(cursorResetAt, false)
-  readonly property string cursorHeroMeta: {
-    if (cursorUsageStatusText !== "") return cursorUsageStatusText
-    if (cursorRebillLabel !== "") return cursorRebillLabel
-    return "\u00A0"
-  }
-  readonly property real cursorMetaOpacity: {
-    if (cursorUsageStatusText !== "") return 1
-    return root.cursorIdentityOpen && cursorRebillLabel !== "" ? 1 : 0
-  }
+  readonly property string cursorHeroMeta: root.clickMeta(cursorUsageStatusText, cursorResetAt, "", false)
+  readonly property real cursorMetaOpacity: root.clickMetaOpacity(
+    cursorUsageStatusText, cursorHeroMeta, cursorIdentityOpen)
   readonly property string cursorResetsLabel: root.formatResetsLabel(cursorResetAt)
   readonly property url cursorIconSource: colorLuminance(surface) >= 0.5
     ? Qt.resolvedUrl("assets/cursor-light.svg")
@@ -259,6 +256,9 @@ Panel {
   readonly property bool grokBotOverPace: grokBotExpectedPace >= 0 && grokBotDisplay >= 0
     && grokBotDisplay > grokBotExpectedPace + 0.0001
   readonly property string grokBotTitle: grokBotTierLabel !== "" ? grokBotTierLabel : "Grok Bot"
+  readonly property string grokBotHeroMeta: root.clickMeta(grokBotUsageStatusText, grokBotResetAt, "", false)
+  readonly property real grokBotMetaOpacity: root.clickMetaOpacity(
+    grokBotUsageStatusText, grokBotHeroMeta, grokBotIdentityOpen)
   readonly property string grokBotUsedLabel: grokBotDisplay >= 0
     ? Math.round(grokBotDisplay * 100) + "% of weekly limit used"
     : ""
@@ -268,35 +268,50 @@ Panel {
     ? Qt.resolvedUrl("assets/grok-bot-light.svg")
     : Qt.resolvedUrl("assets/grok-bot.svg")
 
-  readonly property var claudePools: {
-    if (hostWidget && hostWidget.claudeDisplayLimits)
-      return hostWidget.claudeDisplayLimits
+  readonly property var gptPools: {
+    if (hostWidget && hostWidget.gptDisplayLimits)
+      return hostWidget.gptDisplayLimits
     return []
   }
-  readonly property string claudeTitle: claudeTierLabel !== "" ? claudeTierLabel : "Claude"
-  readonly property string claudeResetsLabel: {
-    if (!hostWidget) return root.formatResetsLabel(claudeSessionResetAt || claudeWeeklyResetAt)
-    return root.formatResetsLabel(String(hostWidget.claudeResetAt || claudeSessionResetAt || claudeWeeklyResetAt))
+  readonly property string gptTitle: gptTierLabel !== "" ? gptTierLabel : "GPT"
+  readonly property string gptHeroMeta: {
+    var resetIso = hostWidget ? String(hostWidget.gptResetAt || gptSessionResetAt || gptWeeklyResetAt) : (gptSessionResetAt || gptWeeklyResetAt)
+    return root.clickMeta(gptUsageStatusText, resetIso, "", false)
   }
-  readonly property bool claudeAlarming: {
-    var items = root.claudePools
+  readonly property real gptMetaOpacity: root.clickMetaOpacity(
+    gptUsageStatusText, gptHeroMeta, gptIdentityOpen)
+  readonly property string gptResetsLabel: {
+    if (!hostWidget) return root.formatResetsLabel(gptSessionResetAt || gptWeeklyResetAt)
+    return root.formatResetsLabel(String(hostWidget.gptResetAt || gptSessionResetAt || gptWeeklyResetAt))
+  }
+  readonly property bool gptAlarming: {
+    var items = root.gptPools
     for (var i = 0; i < items.length; i++) {
       if (Number(items[i].percent) >= 0.9 || items[i].overPace === true)
         return true
     }
     return false
   }
-  readonly property url claudeIconSource: colorLuminance(surface) >= 0.5
-    ? Qt.resolvedUrl("assets/claude-light.svg")
-    : Qt.resolvedUrl("assets/claude.svg")
+  readonly property url gptIconSource: colorLuminance(surface) >= 0.5
+    ? Qt.resolvedUrl("assets/gpt-light.svg")
+    : Qt.resolvedUrl("assets/gpt.svg")
 
-  function claudeWindowUsedLabel(item) {
+  function windowUsedLabel(item) {
     var title = String((item && item.title) || "Limit")
     var pct = Number(item && item.percent)
     var used = isFinite(pct) && pct >= 0 ? Math.round(pct * 100) + "%" : "—"
     var kind = String((item && item.kind) || "")
     var window = kind === "session" ? "5-hour" : (kind === "month" ? "monthly" : "weekly")
     return title + " · " + used + " of " + window + " limit used"
+  }
+
+  function gptWindowUsedLabel(item) {
+    var title = String((item && item.title) || "Codex")
+    var pct = Number(item && item.percent)
+    var usedN = (isFinite(pct) && pct >= 0) ? Math.round(pct * 100) : -1
+    var used = usedN >= 0 ? usedN + "%" : "—"
+    var left = usedN >= 0 ? Math.max(0, 100 - usedN) + "%" : "—"
+    return title + " · " + used + " used · " + left + " left"
   }
 
   // Product-slice opacities of a pace-aware fill (accent under, urgent over).
@@ -378,8 +393,41 @@ Panel {
       + ", " + when.getFullYear()
   }
 
+  function isFutureIso(iso) {
+    var t = root.parseTimeMs(iso)
+    return t > root.nowMs
+  }
+
+  // Title-click subtitle: live usage reset, else a future rebill. Never a past date.
+  function clickMeta(statusText, resetIso, rebillIso, cancels) {
+    if (String(statusText || "") !== "")
+      return String(statusText)
+    if (root.isFutureIso(resetIso)) {
+      var resets = root.formatResetsLabel(resetIso)
+      if (resets !== "")
+        return resets
+    }
+    if (root.isFutureIso(rebillIso)) {
+      var rebill = root.formatRebillLabel(rebillIso, cancels === true)
+      if (rebill !== "")
+        return rebill
+    }
+    return "\u00A0"
+  }
+
+  function clickMetaOpacity(statusText, meta, identityOpen) {
+    if (String(statusText || "") !== "")
+      return 1
+    var text = String(meta || "").trim()
+    if (identityOpen && text !== "" && text !== "\u00A0")
+      return 1
+    return 0
+  }
+
   function setCenterHoverRevealSuppressed(value) {
-    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
+    if (root.bar && typeof root.bar.setCenterHoverRevealSuppressed === "function")
+      root.bar.setCenterHoverRevealSuppressed(value)
+    else if (root.bar && "centerHoverRevealSuppressed" in root.bar)
       root.bar.centerHoverRevealSuppressed = value
   }
 
@@ -389,7 +437,7 @@ Panel {
       live = hostWidget.refreshing === true
         || ((root.showCursorUsage || root.showGrokBotUsage)
           && hostWidget.cursorRefreshing === true)
-        || (root.showClaudeUsage && hostWidget.claudeRefreshing === true)
+        || (root.showGptUsage && hostWidget.gptRefreshing === true)
     }
     if (!live && Date.now() < root.refreshHoldUntilMs)
       live = true
@@ -397,21 +445,30 @@ Panel {
   }
 
   function open() {
+    openedFromHotkey = false
+    setCenterHoverRevealSuppressed(false)
     root.controller.show()
     root.refresh()
+  }
+
+  function openFromHotkey() {
+    openedFromHotkey = true
+    root.controller.show()
+    root.refresh()
+    // Set after showing, not before: showing hands the popout coordinator
+    // over, which closes whichever panel was open, and that close clears the
+    // shared flag. Deferring means the panel taking over always wins.
     Qt.callLater(function() {
       if (root.opened) setCenterHoverRevealSuppressed(true)
     })
   }
-
-  function openFromHotkey() { open() }
 
   function close() {
     pageFlip.stop()
     root.grokIdentityOpen = false
     root.grokBotIdentityOpen = false
     root.cursorIdentityOpen = false
-    root.claudeIdentityOpen = false
+    root.gptIdentityOpen = false
     root.settingsOpen = false
     root.pendingSettingsOpen = false
     cardRotation.angle = 0
@@ -428,7 +485,7 @@ Panel {
 
   function toggle() {
     if (root.opened) close()
-    else open()
+    else openFromHotkey()
   }
 
   function refresh() {
@@ -450,9 +507,9 @@ Panel {
       hostWidget.setShowGrokBotUsage(on)
   }
 
-  function setShowClaudeUsage(on) {
-    if (hostWidget && typeof hostWidget.setShowClaudeUsage === "function")
-      hostWidget.setShowClaudeUsage(on)
+  function setShowGptUsage(on) {
+    if (hostWidget && typeof hostWidget.setShowGptUsage === "function")
+      hostWidget.setShowGptUsage(on)
   }
 
   function switchPanel(direction) {
@@ -468,7 +525,7 @@ Panel {
     enabled: root.hostWidget != null
     function onRefreshingChanged() { root.syncRefreshing() }
     function onCursorRefreshingChanged() { root.syncRefreshing() }
-    function onClaudeRefreshingChanged() { root.syncRefreshing() }
+    function onGptRefreshingChanged() { root.syncRefreshing() }
   }
 
   SequentialAnimation {
@@ -519,7 +576,7 @@ Panel {
   KeyboardPanel {
     id: panel
     anchorItem: root.anchorItem
-    owner: root
+    owner: root.barIdentity
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
@@ -705,7 +762,7 @@ Panel {
         }
 
         PanelSeparator {
-          visible: grokCard.visible && (grokBotCard.visible || cursorCard.visible || claudeCard.visible)
+          visible: grokCard.visible && (grokBotCard.visible || cursorCard.visible || gptCard.visible)
           foreground: root.foreground
         }
 
@@ -719,8 +776,8 @@ Panel {
             id: grokBotHeader
             width: parent.width
             title: root.grokBotTitle
-            meta: "\u00A0"
-            metaOpacity: 0
+            meta: root.grokBotHeroMeta
+            metaOpacity: root.grokBotMetaOpacity
             iconSource: root.grokBotIconSource
             accountName: root.cursorLoginName
             accountEmail: root.cursorLoginEmail
@@ -808,7 +865,7 @@ Panel {
         }
 
         PanelSeparator {
-          visible: grokBotCard.visible && (cursorCard.visible || claudeCard.visible)
+          visible: grokBotCard.visible && (cursorCard.visible || gptCard.visible)
           foreground: root.foreground
         }
 
@@ -925,52 +982,52 @@ Panel {
         }
 
         PanelSeparator {
-          visible: cursorCard.visible && claudeCard.visible
+          visible: cursorCard.visible && gptCard.visible
           foreground: root.foreground
         }
 
         Column {
-          id: claudeCard
-          visible: root.showClaudeUsage && (root.claudeHasData || root.claudeUsageStatusText !== "")
+          id: gptCard
+          visible: root.showGptUsage && (root.gptHasData || root.gptUsageStatusText !== "")
           width: parent.width
           spacing: Style.space(12)
 
           PlanHeader {
-            id: claudeHeader
+            id: gptHeader
             width: parent.width
-            title: root.claudeTitle
-            meta: "\u00A0"
-            metaOpacity: 0
-            iconSource: root.claudeIconSource
-            accountName: ""
-            accountEmail: ""
-            identityVisible: root.claudeIdentityOpen
+            title: root.gptTitle
+            meta: root.gptHeroMeta
+            metaOpacity: root.gptMetaOpacity
+            iconSource: root.gptIconSource
+            accountName: root.gptLoginName
+            accountEmail: root.gptLoginEmail
+            identityVisible: root.gptIdentityOpen
             headerActionsVisible: !grokCard.visible && !grokBotCard.visible && !cursorCard.visible
             refreshing: root.panelRefreshing
             foreground: root.foreground
             dim: root.dim
             fontFamily: root.fontFamily
-            onIdentityClicked: root.claudeIdentityOpen = !root.claudeIdentityOpen
+            onIdentityClicked: root.gptIdentityOpen = !root.gptIdentityOpen
             onSettingsClicked: root.showSettings(true)
             onRefreshClicked: root.refresh()
           }
 
           BorderSurface {
-            visible: root.claudeUsageStatusText !== ""
+            visible: root.gptUsageStatusText !== ""
             width: parent.width
-            implicitHeight: claudeStatusText.implicitHeight + Style.spacing.xl * 2
+            implicitHeight: gptStatusText.implicitHeight + Style.spacing.xl * 2
             color: Qt.rgba(root.urgent.r, root.urgent.g, root.urgent.b, 0.10)
             borderSpec: Border.flat(Qt.rgba(root.urgent.r, root.urgent.g, root.urgent.b, 0.35), 1)
             radius: Style.cornerRadius
 
             Text {
-              id: claudeStatusText
+              id: gptStatusText
               anchors.left: parent.left
               anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
               anchors.leftMargin: Style.space(12)
               anchors.rightMargin: Style.space(12)
-              text: root.claudeAuthHelpText !== "" ? root.claudeAuthHelpText : root.claudeUsageStatusText
+              text: root.gptAuthHelpText !== "" ? root.gptAuthHelpText : root.gptUsageStatusText
               textFormat: Text.PlainText
               color: root.dim
               font.family: root.fontFamily
@@ -980,28 +1037,28 @@ Panel {
           }
 
           Column {
-            visible: root.claudeHasData
+            visible: root.gptHasData
             width: parent.width
             spacing: Style.space(10)
 
             Repeater {
-              model: root.claudePools
+              model: root.gptPools
 
               Column {
                 required property var modelData
                 required property int index
-                width: claudeCard.width
+                width: gptCard.width
                 spacing: Style.space(6)
 
                 Item {
                   width: parent.width
-                  implicitHeight: Math.max(claudePoolUsedText.implicitHeight, claudePoolResetText.implicitHeight)
+                  implicitHeight: Math.max(gptPoolUsedText.implicitHeight, gptPoolResetText.implicitHeight)
 
                   Text {
-                    id: claudePoolUsedText
+                    id: gptPoolUsedText
                     width: parent.width
-                      - (claudePoolResetText.visible ? claudePoolResetText.implicitWidth + Style.space(10) : 0)
-                    text: root.claudeWindowUsedLabel(modelData)
+                      - (gptPoolResetText.visible ? gptPoolResetText.implicitWidth + Style.space(10) : 0)
+                    text: root.gptWindowUsedLabel(modelData)
                     color: (modelData.overPace === true || Number(modelData.percent) >= 0.9)
                       ? root.urgent : root.foreground
                     font.family: root.fontFamily
@@ -1012,7 +1069,7 @@ Panel {
                   }
 
                   Text {
-                    id: claudePoolResetText
+                    id: gptPoolResetText
                     visible: root.formatResetsLabel(modelData.resetAt) !== ""
                     text: root.formatResetsLabel(modelData.resetAt)
                     color: root.dim
@@ -1113,14 +1170,14 @@ Panel {
         }
 
         Toggle {
-          id: claudeUsageSetting
+          id: gptUsageSetting
           width: parent.width
-          label: "Claude usage"
-          description: "Show Claude Code session and weekly usage on the bar. On when a Claude login exists."
-          checked: root.showClaudeUsage
+          label: "GPT usage"
+          description: "Show GPT usage from the local Codex session. Off by default."
+          checked: root.showGptUsage
           foreground: root.foreground
           fontFamily: root.fontFamily
-          onClicked: root.setShowClaudeUsage(!root.showClaudeUsage)
+          onClicked: root.setShowGptUsage(!root.showGptUsage)
         }
       }
     }
@@ -1282,7 +1339,7 @@ Panel {
       anchors.verticalCenter: titleText.verticalCenter
       z: 1
       iconText: "󰒓"
-      tooltipText: "Claude & Grok settings"
+      tooltipText: "Usage settings"
       foreground: hdr.foreground
       fontFamily: hdr.fontFamily
       onClicked: hdr.settingsClicked()
