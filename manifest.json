@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "pixbroker.grokbar-omarchy",
   "name": "Grok",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "author": "pixbroker",
   "license": "MIT",
-  "description": "SuperGrok usage on the bar, plus optional Cursor, Grok Bot, and GPT.",
+  "description": "SuperGrok and Claude Code usage on the bar, plus optional Cursor and Grok Bot.",
   "kinds": [
     "bar-widget"
   ],
@@ -15,7 +15,7 @@
   },
   "barWidget": {
     "displayName": "Grok",
-    "description": "Bar widget for SuperGrok usage, plus optional Cursor, Grok Bot, and GPT.",
+    "description": "Bar widget for SuperGrok and Claude Code usage, plus optional Cursor and Grok Bot.",
     "category": "AI",
     "aliases": [
       "usebar",
@@ -27,11 +27,11 @@
       "refreshIntervalSec": 300,
       "showCursorUsage": false,
       "showGrokBotUsage": false,
-      "showGptUsage": false,
+      "showClaudeUsage": true,
       "authPath": "",
       "stateDbPath": "",
       "cursorAuthPath": "",
-      "codexHome": ""
+      "claudeConfigDir": ""
     },
     "schema": [
       {
@@ -49,11 +49,11 @@
         "defaultValue": false
       },
       {
-        "key": "showGptUsage",
+        "key": "showClaudeUsage",
         "type": "boolean",
-        "label": "Show GPT usage",
-        "description": "Show GPT usage from the local Codex session. Off by default; also toggled from panel settings.",
-        "defaultValue": false
+        "label": "Show Claude usage",
+        "description": "Show Claude Code session and weekly pools on the bar. On by default; also toggled from panel settings.",
+        "defaultValue": true
       },
       {
         "key": "refreshIntervalSec",
@@ -86,11 +86,11 @@
         "description": "Optional. Defaults to ~/.config/cursor/auth.json."
       },
       {
-        "key": "codexHome",
+        "key": "claudeConfigDir",
         "type": "path",
-        "label": "Codex home directory",
+        "label": "Claude config directory",
         "defaultValue": "",
-        "description": "Optional. Defaults to ~/.codex."
+        "description": "Optional. Defaults to ~/.claude."
       }
     ]
   }
