@@ -45,6 +45,8 @@ CATEGORY_LABELS = {
     3: "Imagine",
     4: "Chat",
     5: "Voice",
+    6: "Voice",
+    9: "Grok Bot",
 }
 
 # Official Usage card lists the biggest slice first (Grok Build, then Chat, …).
@@ -54,6 +56,8 @@ CATEGORY_ORDER = {
     1: 2,  # API
     3: 3,  # Imagine
     5: 4,  # Voice
+    6: 5,  # Voice
+    9: 6,  # Grok Bot
 }
 
 
